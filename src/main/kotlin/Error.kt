@@ -15,3 +15,6 @@ interface ErrorLogger {
         return true // logged
     }
 }
+
+/** Marker Error Class */
+class ParseError(msg: String) : Exception(msg)

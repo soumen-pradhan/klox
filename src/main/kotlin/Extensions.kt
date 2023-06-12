@@ -1,3 +1,4 @@
+import java.io.File
 import kotlin.math.abs
 
 /** Boolean to Nullable Boolean */
@@ -10,35 +11,65 @@ fun Double.str() = if (this == toInt().toDouble()) toInt().toString() else toStr
 fun Int.digits(): Int {
     if (this == 0) return 1
 
-    var l = 0
+    var count = 0
     var n = abs(this)
 
     while (n > 0) {
         n /= 10
-        ++l
+        ++count
     }
 
-    return l
+    return count
 }
 
 fun eprintln(string: String) = System.err.println(string)
 
-fun logError(pos: Pos, msg: String, code: String = "") {
-    eprintln("${pos.line} | $code")
-    eprintln("^".padStart(pos.line.digits() + 3 + pos.char) + " $msg")
-}
-
-fun logError(tokenPos: TokenPos, msg: String, code: String = "") {
-    val (token, pos) = tokenPos
-    eprintln("${pos.line} | $code")
-    eprintln("^".padStart(pos.line.digits() + 3 + pos.char) + " $msg. Found $token")
-}
+/** Position at file source code */
+typealias CharPos = Pair<Char, Pos>
 
 data class Pos(val line: Int, val char: Int) {
     override fun toString(): String = "$line:$char"
 }
 
-typealias CharPos = Pair<Char, Pos>
+/** Check file */
+class FileChecker(val file: File) {
+    private var canRead = true
+    fun canRead() {
+        canRead = file.canRead()
+    }
+
+    private var exists = true
+    fun exists() {
+        exists = file.exists()
+    }
+
+    private var isFile = true
+    fun isFile() {
+        isFile = file.isFile
+    }
+
+    fun valid() {
+        if (!canRead) throw FileException("File $file cannot be read")
+        if (!exists) throw FileException("File $file does not exist")
+        if (!isFile) throw FileException("$file is not a valid file")
+    }
+}
+
+class FileException(msg: String) : Exception(msg)
+
+fun File.checkAndRead(block: FileChecker.() -> Unit): List<String>? {
+    try {
+        FileChecker(this).apply {
+            block()
+            valid()
+        }
+    } catch (e: FileException) {
+        eprintln(e.message ?: "")
+        return null
+    }
+
+    return this.readLines()
+}
 
 /** Peek into a Iterator without consuming it */
 class PeekableIterator<T : Any>(private var iter: Iterator<T>) : Iterator<T> {
@@ -65,6 +96,3 @@ class PeekableIterator<T : Any>(private var iter: Iterator<T>) : Iterator<T> {
 
 fun <T : Any> Iterator<T>.peekable() = PeekableIterator(this)
 fun <T : Any> Sequence<T>.peekable() = iterator().peekable()
-
-/** Marker Error Class */
-class ParseError(msg: String) : RuntimeException(msg)
