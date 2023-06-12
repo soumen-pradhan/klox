@@ -1,0 +1,17 @@
+fun main() {
+    var pi = 3.14;
+    var name = "Alice";
+    var age = 25;
+    var isStudent = true;
+
+    print "Hello, " + name + "!";
+    print "You are " + age + " years old.";
+
+    if (isStudent) {
+        print "You are a student.";
+    } else {
+        print "You are not a student.";
+    }
+}
+
+// Simple Lox program with additional statements
