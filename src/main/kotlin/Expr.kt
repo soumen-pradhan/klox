@@ -15,10 +15,10 @@ sealed class Expr {
 }
 
 fun Expr.print(): String = when (this) {
-    is Expr.Binary -> paren(operator.lexeme, left, right)
+    is Expr.Binary -> paren(operator.toString(), left, right)
     is Expr.Grouping -> paren("group", expr)
     is Expr.Literal -> value?.toString() ?: "nil"
-    is Expr.Unary -> paren(operator.lexeme, right)
+    is Expr.Unary -> paren(operator.toString(), right)
 }
 
 fun paren(name: String, vararg exprs: Expr) = buildString {

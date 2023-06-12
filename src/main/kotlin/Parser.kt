@@ -1,4 +1,4 @@
-import Type.*
+/*import Type.*
 
 /**
 expression → equality ;
@@ -136,4 +136,4 @@ class Parser(val tokens: PeekableIterator<Token>) {
 
 }
 
-class ParseError(msg: String) : RuntimeException(msg)
+*/

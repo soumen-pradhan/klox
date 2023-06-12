@@ -1,21 +1,44 @@
+import kotlin.math.abs
+
 /** Boolean to Nullable Boolean */
 fun Boolean.orNull(): Boolean? = if (this) true else null
 
-fun eprintln(string: String) = System.err.println(string)
+/** Print double without fractional part */
+fun Double.str() = if (this == toInt().toDouble()) toInt().toString() else toString()
 
-fun logError(pos: Pos, msg: String) {
-    eprintln("Error [$pos]: $msg")
+/** Count digits of an Int */
+fun Int.digits(): Int {
+    if (this == 0) return 1
+
+    var l = 0
+    var n = abs(this)
+
+    while (n > 0) {
+        n /= 10
+        ++l
+    }
+
+    return l
 }
 
-fun logError(token: Token, msg: String) {
-    eprintln("Error [${token.pos}]: $msg. Found ${token.lexeme}")
+fun eprintln(string: String) = System.err.println(string)
+
+fun logError(pos: Pos, msg: String, code: String = "") {
+    eprintln("${pos.line} | $code")
+    eprintln("^".padStart(pos.line.digits() + 3 + pos.char) + " $msg")
+}
+
+fun logError(tokenPos: TokenPos, msg: String, code: String = "") {
+    val (token, pos) = tokenPos
+    eprintln("${pos.line} | $code")
+    eprintln("^".padStart(pos.line.digits() + 3 + pos.char) + " $msg. Found $token")
 }
 
 data class Pos(val line: Int, val char: Int) {
     override fun toString(): String = "$line:$char"
 }
 
-typealias PosChar = Pair<Pos, Char>
+typealias CharPos = Pair<Char, Pos>
 
 /** Peek into a Iterator without consuming it */
 class PeekableIterator<T : Any>(private var iter: Iterator<T>) : Iterator<T> {
@@ -42,3 +65,6 @@ class PeekableIterator<T : Any>(private var iter: Iterator<T>) : Iterator<T> {
 
 fun <T : Any> Iterator<T>.peekable() = PeekableIterator(this)
 fun <T : Any> Sequence<T>.peekable() = iterator().peekable()
+
+/** Marker Error Class */
+class ParseError(msg: String) : RuntimeException(msg)

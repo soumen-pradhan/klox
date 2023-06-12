@@ -6,30 +6,41 @@ import java.nio.charset.Charset
 import java.util.*
 import kotlin.system.exitProcess
 
-fun main(args: Array<String>) {
+fun main() {
 
-    val file = File("src/test/resources/expr.lox")
+    val file = File("src/test/resources/sample.lox")
     val src = file.checkAndRead() ?: exitProcess(64)
 
-    val tokeniser = TokenScanner(src.chars().peekable())
+    val tokeniser = TokenScanner(src)
 
-    val expr = Parser(tokeniser.scanTokens().peekable()).parse() ?: return
+    for ((token, pos) in tokeniser.scanTokens()) {
+        println("[$pos] $token")
+    }
 
-    if (tokeniser.hadError) return
-
-    println(expr.print())
+//    for ((token, pos) in tokeniser.scanTokens()) {
+//        println("[$pos] $token")
+//    }
+//
+//    val expr = Parser(tokeniser.scanTokens().peekable()).parse() ?: return
+//
+//    if (tokeniser.hadError) return
+//
+//    println(expr.print())
 
     src.close()
 }
 
 class SrcReader(file: File) {
     private val reader = BufferedReader(FileReader(file))
+    var currLine: String = ""
 
-    fun chars(): Sequence<PosChar> = reader.lineSequence().withIndex()
+    fun chars(): Sequence<CharPos> = reader.lineSequence().withIndex()
         .flatMap { (lineIdx, line) ->
+            currLine = line // save it for error
+
             line.asSequence().withIndex()
                 .map { (charIdx, char) ->
-                    Pos(lineIdx + 1, charIdx + 1) to char
+                    char to Pos(lineIdx + 1, charIdx + 1)
                 }
         }
 
