@@ -28,7 +28,7 @@ fun eprintln(string: String) = System.err.println(string)
 data class CharPos(val char: Char, val pos: Pos)
 
 data class Pos(val line: Int, val char: Int) {
-    override fun toString(): String = "$line:$char"
+    override fun toString() = "$line:$char"
 }
 
 /** Check file */
@@ -80,7 +80,7 @@ fun PeekableIterator<Token>.end() = (peek()?.type ?: throw AbruptEndError) == To
 fun <K, V> Map<K, V>.invert() =
     entries.associate { (key, value) -> value to key }
 
-/**  */
+/** Access an element or null */
 fun <T> List<T>.getOrNull(index: Int): T? = try {
     this[index]
 } catch (e: IndexOutOfBoundsException) {

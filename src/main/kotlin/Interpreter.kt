@@ -67,18 +67,34 @@ import Stmt.*
 import TokenType.*
 
 class Interpreter {
-    private val env = mutableMapOf<String, Literal>()
-
-    // error logging responsibility on caller code
-    fun get(name: IDENTIFIER): Literal? = env[name.value]
+    private var env = Environment()
 
     fun interpret(stmt: Stmt): Literal = when (stmt) {
         is Expression -> stmt.expr.eval()
         is Print -> stmt.expr.eval().also { println(it.ast()) }
+
         is Var -> {
             val initVal = stmt.init.eval()
-            env[stmt.name.value] = initVal
+            env.define(stmt.name, initVal)
             initVal
+        }
+
+        is Block -> {
+            val parent = env
+            var lastVal: Literal = Literal.Nothing
+
+            try {
+                env = Environment(parent) // create new env
+
+                for (s in stmt.stmts) {
+                    lastVal = interpret(s)
+                }
+
+            } finally {
+                env = parent
+            }
+
+            lastVal
         }
     }
 
@@ -150,22 +166,36 @@ class Interpreter {
             }
         }
 
-        is Variable -> get(name)
-            ?: throw InterpreterError("Undefined variable `${name.value}`")
+        is Variable -> env.get(name)
 
-        is Assign -> {
-            val value = expr.eval()
-
-            // don't create new variables
-            env.computeIfPresent(name.value) { _, _ -> value }
-                ?: Log.err {
-                    msg = "Undefined variable ${name.value}"
-                }
-
-            value
-        }
+        is Assign -> expr.eval().also { env.assign(name, it) }
 
         is Literal -> this
+    }
+}
+
+class Environment(
+    private val parent: Environment? = null,
+    private val map: MutableMap<String, Literal> = mutableMapOf(),
+) {
+    // error logging responsibility on caller code
+    fun get(name: IDENTIFIER): Literal = map[name.value]
+        ?: parent?.get(name)
+        ?: throw InterpreterError("Undefined variable `${name.value}`")
+
+    fun define(name: IDENTIFIER, value: Literal) {
+        map[name.value] = value
+    }
+
+    fun assign(name: IDENTIFIER, value: Literal) {
+        if (map.containsKey(name.value)) {
+            map[name.value] = value
+        } else if (parent != null) {
+            parent.assign(name, value)
+        } else {
+            Log.err { msg = "Undefined variable ${name.value}" }
+            throw InterpreterError("Undefined variable `${name.value}`")
+        }
     }
 }
 

@@ -1,7 +1,19 @@
-print "START";
-
-var a = 2;
+var a = "global a";
+var b = "global b";
+var c = "global c";
+{
+    var a = "outer a";
+    var b = "outer b";
+    {
+        var a = "inner a";
+        print a;
+        print b;
+        print c;
+    }
+    print a;
+    print b;
+    print c;
+}
 print a;
-
-a = (a * 5) + (3 - 2);
-print a;
+print b;
+print c;

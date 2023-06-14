@@ -1,10 +1,9 @@
-import TokenType.*
-
 /**
  * program    → decl* EOF
  * decl       → varDecl | statement
  * varDecl    → "var" IDENT ( "=" expression )? ";"
- * statement  → exprStmt | printStmt
+ * statement  → exprStmt | printStmt | block
+ * block      → "(" decl* ")"
  * exprStmt   → expression ";"
  * printStmt  → "print" expression ";"
  * expression → assignment
@@ -16,6 +15,8 @@ import TokenType.*
  * unary      → ( "!" | "-" ) unary | primary
  * primary    → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENT
  */
+
+import TokenType.*
 
 class Parser(private val tokens: PeekableIterator<Token>) {
 
@@ -63,23 +64,46 @@ class Parser(private val tokens: PeekableIterator<Token>) {
             Expr.Literal.Nothing
         }
 
-        consume(SEMICOLON, "Expected `${SEMICOLON.repr()}` after variable declaration")
+        // TODO Bug - When semicolon is missing at end, the next line is logged
+        consume(SEMICOLON, "Expected `${SEMICOLON.repr()}` after variable `${name.value}` declaration")
+
         return Stmt.Var(name, init)
     }
 
     private fun statement(): Stmt {
         val beginToken = tokens.peek() ?: throw AbruptEndError
 
-        return if (beginToken.type == PRINT) {
-            tokens.next()
-            val expr = expression()
-            consume(SEMICOLON, "Expected `;` after statement")
-            Stmt.Print(expr)
-        } else {
-            val expr = expression()
-            consume(SEMICOLON, "Expected `;` after statement")
-            Stmt.Expression(expr)
+        return when (beginToken.type) {
+            PRINT -> {
+                tokens.next()
+                val expr = expression()
+                consume(SEMICOLON, "Expected `;` after statement")
+                Stmt.Print(expr)
+            }
+
+            LEFT_BRACE -> {
+                tokens.next()
+                Stmt.Block(block())
+            }
+
+            else -> {
+                val expr = expression()
+                consume(SEMICOLON, "Expected `;` after statement")
+                Stmt.Expression(expr)
+            }
         }
+    }
+
+    private fun block(): List<Stmt> {
+        val statements = buildList {
+            while (!tokens.end() && tokens.peek()?.type != RIGHT_BRACE) {
+                val decl = declaration() ?: continue
+                add(decl)
+            }
+        }
+
+        consume(RIGHT_BRACE, "Expected ${RIGHT_BRACE.repr()} after block")
+        return statements
     }
 
     private fun expression(): Expr = assignment()
