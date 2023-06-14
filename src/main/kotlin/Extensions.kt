@@ -2,10 +2,10 @@ import java.io.File
 import kotlin.math.abs
 
 /** Boolean to Nullable Boolean */
-fun Boolean.orNull(): Boolean? = if (this) true else null
+// fun Boolean.orNull(): Boolean? = if (this) true else null
 
 /** Print double without fractional part */
-fun Double.str() = if (this == toInt().toDouble()) toInt().toString() else toString()
+fun Double.repr() = if (this == toInt().toDouble()) toInt().toString() else toString()
 
 /** Count digits of an Int */
 fun Int.digits(): Int {
@@ -25,53 +25,29 @@ fun Int.digits(): Int {
 fun eprintln(string: String) = System.err.println(string)
 
 /** Position at file source code */
-typealias CharPos = Pair<Char, Pos>
+data class CharPos(val char: Char, val pos: Pos)
 
 data class Pos(val line: Int, val char: Int) {
     override fun toString(): String = "$line:$char"
 }
 
 /** Check file */
-class FileChecker(val file: File) {
-    private var canRead = true
-    fun canRead() {
-        canRead = file.canRead()
-    }
-
-    private var exists = true
-    fun exists() {
-        exists = file.exists()
-    }
-
-    private var isFile = true
-    fun isFile() {
-        isFile = file.isFile
-    }
-
-    fun valid() {
-        if (!canRead) throw FileException("File $file cannot be read")
-        if (!exists) throw FileException("File $file does not exist")
-        if (!isFile) throw FileException("$file is not a valid file")
-    }
-}
-
 class FileException(msg: String) : Exception(msg)
 
-fun File.checkAndRead(block: FileChecker.() -> Unit): List<String>? {
+infix fun Boolean.or(msg: String) = if (this) this else throw FileException(msg)
+
+fun File.checkAndRead(block: File.() -> Unit): List<String>? {
     try {
-        FileChecker(this).apply {
-            block()
-            valid()
-        }
+        block()
     } catch (e: FileException) {
         eprintln(e.message ?: "")
         return null
     }
 
-    return this.readLines()
+    return readLines()
 }
 
-/** Peek into a Iterator without consuming it */
+/** Peek into an Iterator without consuming it */
 class PeekableIterator<T : Any>(private var iter: Iterator<T>) : Iterator<T> {
     private var peekedValue: T? = null
 
@@ -96,3 +72,17 @@ class PeekableIterator<T : Any>(private var iter: Iterator<T>) : Iterator<T> {
 
 fun <T : Any> Iterator<T>.peekable() = PeekableIterator(this)
 fun <T : Any> Sequence<T>.peekable() = iterator().peekable()
+
+fun PeekableIterator<Token>.match(vararg tokens: TokenType) = tokens.any { it == peek()?.type }
+fun PeekableIterator<Token>.end() = (peek()?.type ?: throw AbruptEndError) == TokenType.EOF
+
+/** Invert a map */
+fun <K, V> Map<K, V>.invert() =
+    entries.associate { (key, value) -> value to key }
+
+/**  */
+fun <T> List<T>.getOrNull(index: Int): T? = try {
+    this[index]
+} catch (e: IndexOutOfBoundsException) {
+    null
+}

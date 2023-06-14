@@ -1,55 +1,50 @@
-import java.io.BufferedReader
 import java.io.File
-import java.io.FileReader
 import kotlin.system.exitProcess
 
 fun main() {
-    // only 2GB files
-    val file = File("src/test/resources/sample.lox")
+    // only < 2GB files
+    val file = File("src/test/resources/expr.lox")
+
     val lines = file.checkAndRead {
-        canRead()
-        exists()
-        isFile()
+        exists() or "$this does not exist"
+        isFile or "$this is not a file"
+        canRead() or "$this cannot be read"
     } ?: exitProcess(64)
 
+    Log.lines = lines
+    val interpreter = Interpreter()
+
     val tokeniser = TokenScanner(lines)
+    val tokens = tokeniser.scanTokens().peekable()
 
-    for ((token, pos) in tokeniser.scanTokens()) {
-//        println("[$pos] $token")
+    val stmts = Parser(tokens).parse()
+
+    for (s in stmts) {
+        try {
+            interpreter.interpret(s)
+        } catch (e: Exception) {
+            eprintln(e.message ?: "Something went wrong")
+            continue
+        }
     }
-
-//    for ((token, pos) in tokeniser.scanTokens()) {
-//        println("[$pos] $token")
-//    }
-//
-//    val expr = Parser(tokeniser.scanTokens().peekable()).parse() ?: return
-//
-//    if (tokeniser.hadError) return
-//
-//    println(expr.print())
-
 }
 
-//fun File.checkAndRead(): SrcReader? {
-//    exists().orNull() ?: return null
-//    canRead().orNull() ?: return null
-//
-//    return SrcReader(this)
-//}
-
-class SrcReader(val file: File) {
-    private val reader = BufferedReader(FileReader(file))
-    var currLine: String = ""
-
-    fun chars(): Sequence<CharPos> = reader.lineSequence().withIndex()
-        .flatMap { (lineIdx, line) ->
-            line.also { currLine = it }.withIndex()
-                .map { (charIdx, char) ->
-                    char to Pos(lineIdx + 1, charIdx + 1)
-                }
+object Log : ErrorLogger {
+    override var hadError: Boolean = false
+    override var position: Pos = Pos(0, 0)
+        set(value) {
+            field = value
+            code = lines.getOrNull(value.line - 1) ?: ""
         }
 
-    fun close() {
-        reader.close()
+    override var msg: String = ""
+    override var code: String = ""
+
+    var lines: List<String> = listOf()
+
+    fun err(block: ErrorLogger.() -> Unit): Boolean {
+        this.block()
+        hadError = true
+        return err()
     }
 }

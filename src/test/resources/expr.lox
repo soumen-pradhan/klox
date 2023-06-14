@@ -1,2 +1,7 @@
-; |
-ujfndjnd nc
+print "START";
+
+var a = 2;
+print a;
+
+a = (a * 5) + (3 - 2);
+print a;

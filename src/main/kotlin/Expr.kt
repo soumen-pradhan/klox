@@ -1,33 +1,44 @@
 /**
-expression → literal | unary | binary | grouping ;
-literal    → NUMBER | STRING | "true" | "false" | "nil" ;
-grouping   → "(" expression ")" ;
-unary      → ( "-" | "!" ) expression ;
-binary     → expression operator expression ;
-operator   → "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "-" | "*" | "/" ;
+ * expression → literal | unary | binary | grouping
+ * literal    → NUMBER | STRING | "true" | "false" | "nil"
+ * grouping   → "(" expression ")"
+ * unary      → ( "-" | "!" ) expression
+ * binary     → expression operator expression
+ * operator   → "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "-" | "*" | "/"
  */
+
+import Expr.*
+import TokenType.IDENTIFIER
 
 sealed class Expr {
     data class Binary(val left: Expr, val operator: Token, val right: Expr) : Expr()
     data class Grouping(val expr: Expr) : Expr()
-    data class Literal(val value: Any?) : Expr()
     data class Unary(val operator: Token, val right: Expr) : Expr()
-}
 
-fun Expr.print(): String = when (this) {
-    is Expr.Binary -> paren(operator.toString(), left, right)
-    is Expr.Grouping -> paren("group", expr)
-    is Expr.Literal -> value?.toString() ?: "nil"
-    is Expr.Unary -> paren(operator.toString(), right)
-}
+    // refer to a variable
+    data class Variable(val name: IDENTIFIER) : Expr()
 
-fun paren(name: String, vararg exprs: Expr) = buildString {
-    append("($name")
+    // assign to a variable (not declare)
+    data class Assign(val name: IDENTIFIER, val expr: Expr) : Expr()
 
-    for (expr in exprs) {
-        append(" ")
-        append(expr.print())
+    sealed class Literal : Expr() {
+        class Str(val value: String) : Literal()
+        class Num(val value: Double) : Literal()
+        class Bool(val value: Boolean) : Literal()
+        object Nothing : Literal()
     }
+}
 
-    append(")")
+fun Expr.ast(): String = when (this) {
+    is Binary -> "(${operator.type.repr()} ${left.ast()} ${right.ast()})"
+    is Grouping -> "(group ${expr.ast()})"
+    is Unary -> "(${operator.type.repr()} ${right.ast()})"
+
+    is Variable -> "(var ${name.repr()})"
+    is Assign -> "(let ${name.repr()} ${expr.ast()})"
+
+    is Literal.Str -> value
+    is Literal.Num -> value.repr()
+    is Literal.Bool -> value.toString()
+    is Literal.Nothing -> "nil"
 }
