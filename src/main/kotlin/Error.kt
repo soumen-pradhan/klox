@@ -1,32 +1,11 @@
 interface ErrorLogger {
-    var hadError: Boolean
+    var start: Pos
+    var end: Pos
 
-    var position: Pos
     var msg: String
-    var code: String
 
-    fun err(): Boolean {
-        if (!hadError) return false // no log
-
-        val exceptionError = position.line == 0
-
-        if (exceptionError) {
-            eprintln(msg)
-        } else {
-            eprintln("${position.line} | $code")
-            eprintln("^".padStart(position.line.digits() + 3 + position.char) + " $msg")
-        }
-
-        hadError = false
-        return true // logged
-    }
-
-    fun reset() = this.apply {
-        hadError = false
-        position = Pos(0, 0)
-        msg = ""
-        code = ""
-    }
+    fun err(message: String) = eprintln(message)
+    fun err(block: ErrorLogger.() -> Unit)
 }
 
 /** Marker Error Class */

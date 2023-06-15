@@ -69,32 +69,32 @@ import TokenType.*
 class Interpreter {
     private var env = Environment()
 
-    fun interpret(stmt: Stmt): Literal = when (stmt) {
-        is Expression -> stmt.expr.eval()
-        is Print -> stmt.expr.eval().also { println(it.ast()) }
+    fun interpret(stmt: Stmt): Unit {
+        when (stmt) {
+            is Expression -> stmt.expr.eval()
+            is Print -> stmt.expr.eval().also { println(it.ast()) }
 
-        is Var -> {
-            val initVal = stmt.init.eval()
-            env.define(stmt.name, initVal)
-            initVal
-        }
-
-        is Block -> {
-            val parent = env
-            var lastVal: Literal = Literal.Nothing
-
-            try {
-                env = Environment(parent) // create new env
-
-                for (s in stmt.stmts) {
-                    lastVal = interpret(s)
-                }
-
-            } finally {
-                env = parent
+            is Var -> {
+                val initVal = stmt.init.eval()
+                env.define(stmt.name, initVal)
             }
 
-            lastVal
+            is Block -> {
+                val parent = env
+                var lastVal: Literal = Literal.Nothing
+
+                try {
+                    env = Environment(parent) // create new env
+                    stmt.stmts.forEach { interpret(it) }
+                } finally {
+                    env = parent
+                }
+            }
+
+            is If -> {
+                if (stmt.cond.eval().isTruthy()) interpret(stmt.thenBranch)
+                else if (stmt.elseBranch != null) interpret(stmt.elseBranch)
+            }
         }
     }
 
@@ -105,7 +105,7 @@ class Interpreter {
 
             val errMsg = "Unknown operator `${operator.type.repr()}`"
             Log.apply {
-                position = operator.pos
+                start = operator.pos
                 msg = errMsg
             }
 
@@ -126,7 +126,7 @@ class Interpreter {
                         STAR -> Literal.Num(leftVal.value * rightVal.value)
 
                         else -> {
-                            Log.apply { hadError = true }.err()
+                            Log.err {}
                             throw TypeError(errMsg)
                         }
                     }
@@ -134,7 +134,7 @@ class Interpreter {
                     when (operator.type) {
                         PLUS -> Literal.Str(leftVal.value + rightVal.value)
                         else -> {
-                            Log.apply { hadError = true }.err()
+                            Log.err {}
                             throw TypeError(errMsg)
                         }
                     }
@@ -155,7 +155,7 @@ class Interpreter {
                     Literal.Num(-rightVal.value)
                 } else {
                     Log.err {
-                        position = operator.pos
+                        start = operator.pos
                         msg = "Expected number"
                     }
                     throw TypeError("Expected number")

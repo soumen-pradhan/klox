@@ -2,10 +2,11 @@
  * program    → decl* EOF
  * decl       → varDecl | statement
  * varDecl    → "var" IDENT ( "=" expression )? ";"
- * statement  → exprStmt | printStmt | block
- * block      → "(" decl* ")"
+ * statement  → exprStmt | ifStmt | printStmt | block
  * exprStmt   → expression ";"
+ * ifStmt     → "if" expression "{" statement "}" ( "else" "{" statement "}" )?
  * printStmt  → "print" expression ";"
+ * block      → "(" decl* ")"
  * expression → assignment
  * assignment → IDENT "=" assignment | equality
  * equality   → comparison ( ( "!=" | "==" ) comparison )*
@@ -33,17 +34,18 @@ class Parser(private val tokens: PeekableIterator<Token>) {
         return try {
             if (beginToken.type == VAR) {
                 tokens.next()
-                valDecl()
+                varDecl()
             } else {
                 statement()
             }
         } catch (_: ParseError) {
+            // Log.err(e.message ?: "")
             sync()
             null
         }
     }
 
-    private fun valDecl(): Stmt {
+    private fun varDecl(): Stmt {
         val (peek, pos) = tokens.peek() ?: throw AbruptEndError
 
         val name = if (peek is IDENTIFIER) {
@@ -51,10 +53,11 @@ class Parser(private val tokens: PeekableIterator<Token>) {
             peek
         } else {
             Log.err {
-                position = pos
-                msg = "Expected variable name"
+                start = pos
+                end = pos + Pos(0, peek.repr().length)
+                msg = "Expected a variable"
             }
-            throw ParseError("Expected variable name")
+            throw ParseError("Expected a variable")
         }
 
         val init = if (tokens.peek()?.type == EQUAL) {
@@ -81,6 +84,11 @@ class Parser(private val tokens: PeekableIterator<Token>) {
                 Stmt.Print(expr)
             }
 
+            IF -> {
+                tokens.next()
+                ifStatement()
+            }
+
             LEFT_BRACE -> {
                 tokens.next()
                 Stmt.Block(block())
@@ -92,6 +100,21 @@ class Parser(private val tokens: PeekableIterator<Token>) {
                 Stmt.Expression(expr)
             }
         }
+    }
+
+    private fun ifStatement(): Stmt {
+        consume(LEFT_PAREN, "Expected `${LEFT_PAREN.repr()}` after condition")
+        val cond = expression()
+        consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN.repr()}` after block")
+
+        val thenBranch = statement()
+        val elseBranch =
+            if (!tokens.end() && tokens.peek()?.type == ELSE) {
+                tokens.next()
+                statement()
+            } else null
+
+        return Stmt.If(cond, thenBranch, elseBranch)
     }
 
     private fun block(): List<Stmt> {
@@ -121,7 +144,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
             }
 
             Log.err {
-                position = equals.pos
+                start = equals.pos
                 msg = "Invalid assignment target"
             }
         }
@@ -225,7 +248,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
 
             else -> {
                 Log.err {
-                    position = pos
+                    start = pos
                     msg = "Expected expression. Found `${token.repr()}`"
                 }
                 throw ParseError("not primary token")
@@ -241,7 +264,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
             tokens.next()
         } else {
             Log.err {
-                position = pos
+                start = pos
                 msg = message
             }
             throw ParseError(message)

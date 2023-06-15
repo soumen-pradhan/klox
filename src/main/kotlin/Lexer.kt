@@ -119,6 +119,8 @@ class TokenScanner(lines: List<String>) {
 
         while (chars.hasNext()) {
             val (curr, pos) = chars.next()
+
+            Log.start = pos
             lastPos = pos
 
             val token = when (curr) {
@@ -149,13 +151,11 @@ class TokenScanner(lines: List<String>) {
                 else -> UNKNOWN
             }
 
-            scanError = Log.apply { position = pos }.err()
-
             when (token) {
                 WHITESPACE, COMMENT -> {}
 
                 UNKNOWN -> Log.err {
-                    position = pos
+                    start = pos
                     msg = "Unexpected character"
                 }
 
@@ -175,7 +175,7 @@ class TokenScanner(lines: List<String>) {
         }
 
     private fun skipComment(): TokenType {
-        while (chars.hasNext() && chars.peek()?.pos?.char != 0) {
+        while (chars.hasNext() && chars.peek()?.pos?.char != 1) {
             chars.next()
         }
         return COMMENT
@@ -229,24 +229,22 @@ class TokenScanner(lines: List<String>) {
             while (chars.hasNext()) {
                 val (char, pos) = chars.peek() ?: break
 
+                Log.end = pos
+
                 if (char == '"') {
                     chars.next()
                     break
                 }
 
-                if (pos.char == 0) append('\n')
+                if (pos.char == 1) append("\n")
                 append(chars.next().char)
-
             }
         }
 
         return if (chars.hasNext()) {
             STRING(str)
         } else {
-            Log.apply {
-                hadError = true
-                msg = "Unterminated String"
-            }
+            Log.err { msg = "Unterminated String" }
             UNKNOWN
         }
     }
@@ -268,7 +266,7 @@ class TokenScanner(lines: List<String>) {
         val digits = '0'..'9'
         val lowercase = 'a'..'z'
         val uppercase = 'A'..'Z'
-        val alphaNum = digits + lowercase + uppercase
+        val alphaNum = digits + lowercase + uppercase + '_'
 
         val keywords = TokenType.keywords.invert()
     }

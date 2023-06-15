@@ -22,6 +22,8 @@ fun Int.digits(): Int {
     return count
 }
 
+infix fun Int.fmt(width: Int) = "%${width}d".format(this)
+
 fun eprintln(string: String) = System.err.println(string)
 
 /** Position at file source code */
@@ -30,6 +32,14 @@ data class CharPos(val char: Char, val pos: Pos)
 data class Pos(val line: Int, val char: Int) {
     override fun toString() = "$line:$char"
 }
+
+operator fun Pos.plus(p: Pos) = Pos(line + p.line, char + p.char)
+
+fun max(a: Pos, b: Pos): Pos =
+    if (a.line < b.line) b
+    else if (a.line > b.line) a
+    else if (a.char < b.char) b
+    else a
 
 /** Check file */
 class FileException(msg: String) : Exception(msg)
@@ -79,10 +89,3 @@ fun PeekableIterator<Token>.end() = (peek()?.type ?: throw AbruptEndError) == To
 /** Invert a map */
 fun <K, V> Map<K, V>.invert() =
     entries.associate { (key, value) -> value to key }
-
-/** Access an element or null */
-fun <T> List<T>.getOrNull(index: Int): T? = try {
-    this[index]
-} catch (e: IndexOutOfBoundsException) {
-    null
-}

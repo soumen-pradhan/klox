@@ -1,4 +1,5 @@
 import java.io.File
+import kotlin.math.max
 import kotlin.system.exitProcess
 
 fun main() {
@@ -12,6 +13,7 @@ fun main() {
     } ?: exitProcess(64)
 
     Log.lines = lines
+
     val interpreter = Interpreter()
 
     val tokeniser = TokenScanner(lines)
@@ -22,6 +24,7 @@ fun main() {
     for (s in stmts) {
         try {
             interpreter.interpret(s)
+            // println("> ${s.ast()}")
         } catch (e: Exception) {
             eprintln(e.message ?: "Something went wrong")
             continue
@@ -30,21 +33,57 @@ fun main() {
 }
 
 object Log : ErrorLogger {
-    override var hadError: Boolean = false
-    override var position: Pos = Pos(0, 0)
+
+    override var start: Pos = Pos(0, 0)
         set(value) {
             field = value
-            code = lines.getOrNull(value.line - 1) ?: ""
+            end = value
+        }
+
+    override var end: Pos = Pos(0, 0)
+        set(value) {
+            field = max(start, value)
         }
 
     override var msg: String = ""
-    override var code: String = ""
 
     var lines: List<String> = listOf()
 
-    fun err(block: ErrorLogger.() -> Unit): Boolean {
+    override fun err(block: ErrorLogger.() -> Unit) {
         this.block()
-        hadError = true
-        return err()
+
+        val width = end.line.digits()
+        val linePad = " ".repeat(width) + " | "
+
+        // single line
+        if (start.line == end.line) {
+            val padding = " ".repeat(start.char - 1) +
+                    "^".repeat(max(end.char - start.char, 1))
+
+            eprintln("${start.line} | ${lines.getOrNull(start.line - 1) ?: ""}")
+            eprintln("$linePad$padding $msg")
+
+            return
+        }
+
+        // multiple lines
+        run {
+            val firstLine = lines.getOrNull(start.line - 1) ?: ""
+            val padding = " ".repeat(start.char - 1) +
+                    "^".repeat(firstLine.length - start.char + 1)
+
+            eprintln("${start.line fmt width} | $firstLine")
+            eprintln("$linePad$padding")
+        }
+
+        for (line in (start.line + 1) until end.line) {
+            val codeLine = lines.getOrNull(line - 1) ?: ""
+
+            eprintln("${line fmt width} | $codeLine")
+            eprintln(linePad + "^".repeat(codeLine.length))
+        }
+
+        eprintln("${end.line fmt width} | ${lines.getOrNull(end.line - 1) ?: ""}")
+        eprintln(linePad + "^".repeat(end.char) + " $msg")
     }
 }
