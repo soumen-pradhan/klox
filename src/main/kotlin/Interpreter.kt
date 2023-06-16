@@ -94,6 +94,12 @@ class Interpreter {
                 if (stmt.cond.eval().isTruthy()) interpret(stmt.thenBranch)
                 else if (stmt.elseBranch != null) interpret(stmt.elseBranch)
             }
+
+            is While -> {
+                while (stmt.cond.eval().isTruthy()) {
+                    interpret(stmt.body)
+                }
+            }
         }
     }
 

@@ -2,10 +2,12 @@
  * program    → decl* EOF
  * decl       → varDecl | statement
  * varDecl    → "var" IDENT ( "=" expression )? ";"
- * statement  → exprStmt | ifStmt | printStmt | block
+ * statement  → exprStmt | ifStmt | printStmt | forStmt | whileStmt | block
  * exprStmt   → expression ";"
  * ifStmt     → "if" expression "{" statement "}" ( "else" "{" statement "}" )?
  * printStmt  → "print" expression ";"
+ * forStmt    → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement
+ * whileStmt  → "while" "(" expression ")" statement
  * block      → "(" decl* ")"
  * expression → assignment
  * assignment → IDENT "=" assignment | logic_or
@@ -86,6 +88,23 @@ class Parser(private val tokens: PeekableIterator<Token>) {
                 Stmt.Print(expr)
             }
 
+            WHILE -> {
+                tokens.next()
+
+                consume(LEFT_PAREN, "Expected `${LEFT_PAREN.repr()}` after while")
+                val cond = expression()
+                consume(RIGHT_PAREN, "Expected ${RIGHT_PAREN.repr()} after consition")
+
+                val body = statement()
+
+                Stmt.While(cond, body)
+            }
+
+            FOR -> {
+                tokens.next()
+                forStatement()
+            }
+
             IF -> {
                 tokens.next()
                 ifStatement()
@@ -96,12 +115,49 @@ class Parser(private val tokens: PeekableIterator<Token>) {
                 Stmt.Block(block())
             }
 
-            else -> {
-                val expr = expression()
-                consume(SEMICOLON, "Expected `;` after statement")
-                Stmt.Expression(expr)
-            }
+            else -> exprStatement()
+
         }
+    }
+
+    private fun exprStatement(): Stmt {
+        val expr = expression()
+        consume(SEMICOLON, "Expected `;` after statement")
+        return Stmt.Expression(expr)
+    }
+
+    private fun forStatement(): Stmt {
+        consume(LEFT_PAREN, "Expected `${LEFT_PAREN.repr()}` after `for`")
+
+        val init = if (tokens.match(SEMICOLON)) {
+            tokens.next()
+            null
+        } else if (tokens.match(VAR)) {
+            tokens.next()
+            varDecl()
+        } else {
+            exprStatement()
+        }
+
+        val cond = if (!tokens.match(SEMICOLON)) expression() else Expr.Literal.Bool(true)
+        consume(SEMICOLON, "Expected `${SEMICOLON.repr()}` after loop condition")
+
+        val postBody = if (!tokens.match(RIGHT_PAREN)) expression() else null
+        consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN.repr()}` after the clauses")
+
+        var body = statement()
+
+        if (postBody != null) {
+            body = Stmt.Block(listOf(body, Stmt.Expression(postBody)))
+        }
+
+        body = Stmt.While(cond, body)
+
+        if (init != null) {
+            body = Stmt.Block(listOf(init, body))
+        }
+
+        return body
     }
 
     private fun ifStatement(): Stmt {

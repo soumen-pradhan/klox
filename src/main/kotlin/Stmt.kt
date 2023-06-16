@@ -7,6 +7,7 @@ sealed class Stmt {
     data class Var(val name: IDENTIFIER, val init: Expr) : Stmt()
     data class Block(val stmts: List<Stmt>) : Stmt()
     data class If(val cond: Expr, val thenBranch: Stmt, val elseBranch: Stmt?) : Stmt()
+    data class While(val cond: Expr, val body: Stmt) : Stmt()
 }
 
 fun Stmt.ast(): String = when (this) {
@@ -15,4 +16,5 @@ fun Stmt.ast(): String = when (this) {
     is Var -> "(decl ${name.repr()} ${init.ast()})"
     is Block -> "(block ${stmts.joinToString(" ") { it.ast() }})"
     is If -> "(if ${thenBranch.ast()}" + if (elseBranch != null) " ${elseBranch.ast()})" else ")"
+    is While -> "(while ${cond.ast()} ${body.ast()})"
 }
