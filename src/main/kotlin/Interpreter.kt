@@ -69,7 +69,7 @@ import TokenType.*
 class Interpreter {
     private var env = Environment()
 
-    fun interpret(stmt: Stmt): Unit {
+    fun interpret(stmt: Stmt) {
         when (stmt) {
             is Expression -> stmt.expr.eval()
             is Print -> stmt.expr.eval().also { println(it.ast()) }
@@ -81,7 +81,6 @@ class Interpreter {
 
             is Block -> {
                 val parent = env
-                var lastVal: Literal = Literal.Nothing
 
                 try {
                     env = Environment(parent) // create new env
@@ -143,6 +142,24 @@ class Interpreter {
                     throw TypeError("Required 2 number or 2 string")
                 }
             }
+        }
+
+        is Logical -> {
+            val leftVal = left.eval()
+
+            val ret = when (operator.type) {
+                OR -> if (leftVal.isTruthy()) leftVal else null
+                AND -> if (!leftVal.isTruthy()) leftVal else null
+                else -> {
+                    Log.err {
+                        start = operator.pos
+                        msg = "Expected Logical operator `${operator.type.repr()}`"
+                    }
+                    throw ParseError("Expected Logical operator `${operator.type.repr()}`")
+                }
+            }
+
+            ret ?: right.eval()
         }
 
         is Grouping -> expr.eval()

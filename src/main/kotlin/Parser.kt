@@ -8,7 +8,9 @@
  * printStmt  → "print" expression ";"
  * block      → "(" decl* ")"
  * expression → assignment
- * assignment → IDENT "=" assignment | equality
+ * assignment → IDENT "=" assignment | logic_or
+ * logic_or   → logic_and ( "or" logic_and )*
+ * logic_and  → equality ( "and" equality )*
  * equality   → comparison ( ( "!=" | "==" ) comparison )*
  * comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
  * term       → factor ( ( "-" | "+" ) factor )*
@@ -132,7 +134,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     private fun expression(): Expr = assignment()
 
     private fun assignment(): Expr {
-        val expr = equality()
+        val expr = logicalOr()
 
         if (!tokens.end() && tokens.peek()?.type == EQUAL) {
             val equals = tokens.next()
@@ -147,6 +149,30 @@ class Parser(private val tokens: PeekableIterator<Token>) {
                 start = equals.pos
                 msg = "Invalid assignment target"
             }
+        }
+
+        return expr
+    }
+
+    private fun logicalOr(): Expr {
+        var expr = logicalAnd()
+
+        while (!tokens.end() && tokens.peek()?.type == OR) {
+            val operator = tokens.next()
+            val right = logicalAnd()
+            expr = Expr.Logical(expr, operator, right)
+        }
+
+        return expr
+    }
+
+    private fun logicalAnd(): Expr {
+        var expr = equality()
+
+        while (!tokens.end() && tokens.peek()?.type == AND) {
+            val operator = tokens.next()
+            val right = equality()
+            expr = Expr.Logical(expr, operator, right)
         }
 
         return expr

@@ -104,6 +104,7 @@ data class Token(val type: TokenType, val pos: Pos)
 operator fun TokenType.plus(pos: Pos) = Token(this, pos)
 
 class TokenScanner(lines: List<String>) {
+    @Suppress("unused")
     var scanError = false
 
     private val chars: PeekableIterator<CharPos> = lines.asSequence().withIndex()

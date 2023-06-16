@@ -12,6 +12,8 @@ import TokenType.IDENTIFIER
 
 sealed class Expr {
     data class Binary(val left: Expr, val operator: Token, val right: Expr) : Expr()
+    data class Logical(val left: Expr, val operator: Token, val right: Expr) : Expr()
+
     data class Grouping(val expr: Expr) : Expr()
     data class Unary(val operator: Token, val right: Expr) : Expr()
 
@@ -31,6 +33,8 @@ sealed class Expr {
 
 fun Expr.ast(): String = when (this) {
     is Binary -> "(${operator.type.repr()} ${left.ast()} ${right.ast()})"
+    is Logical -> "(${operator.type.repr()} ${left.ast()} ${right.ast()})"
+
     is Grouping -> "(group ${expr.ast()})"
     is Unary -> "(${operator.type.repr()} ${right.ast()})"
 

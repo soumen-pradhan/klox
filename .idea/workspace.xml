@@ -4,16 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0b74b290-a100-4ac5-b7dd-fee98f41bd7f" name="Changes" comment="Added lexical blocks">
+    <list default="true" id="0b74b290-a100-4ac5-b7dd-fee98f41bd7f" name="Changes" comment="Added if-else control flow">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Error.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Error.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Expr.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Expr.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/kotlin/Extensions.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Extensions.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/kotlin/Interpreter.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Interpreter.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Main.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Main.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/kotlin/Parser.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Parser.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Stmt.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Stmt.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/resources/expr.lox" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/resources/expr.lox" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -146,8 +143,26 @@
       <option name="project" value="LOCAL" />
       <updated>1686744019467</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Added if-else control flow">
+      <created>1686842008317</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1686842008317</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Lexing Tokens. Parsing for single statements" />
@@ -155,7 +170,8 @@
     <MESSAGE value="Loads the entire file in memory to remove line bugs during error logging" />
     <MESSAGE value="added variable assignment and mutability" />
     <MESSAGE value="Added lexical blocks" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added lexical blocks" />
+    <MESSAGE value="Added if-else control flow" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added if-else control flow" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

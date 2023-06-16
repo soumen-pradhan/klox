@@ -44,7 +44,7 @@ fun max(a: Pos, b: Pos): Pos =
 /** Check file */
 class FileException(msg: String) : Exception(msg)
 
-infix fun Boolean.or(msg: String) = if (this) this else throw FileException(msg)
+infix fun Boolean.or(msg: String) = if (this) true else throw FileException(msg)
 
 fun File.checkAndRead(block: File.() -> Unit): List<String>? {
     try {
