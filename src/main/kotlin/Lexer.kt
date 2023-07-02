@@ -1,60 +1,62 @@
 import TokenType.*
 
-sealed class TokenType {
+sealed class TokenType(private val repr: String) {
 
     // Single-character tokens.
-    object LEFT_PAREN : TokenType()
-    object RIGHT_PAREN : TokenType()
-    object LEFT_BRACE : TokenType()
-    object RIGHT_BRACE : TokenType()
+    object LEFT_PAREN : TokenType("(")
+    object RIGHT_PAREN : TokenType(")")
+    object LEFT_BRACE : TokenType("{")
+    object RIGHT_BRACE : TokenType("}")
 
-    object COMMA : TokenType()
-    object DOT : TokenType()
-    object MINUS : TokenType()
-    object PLUS : TokenType()
-    object SEMICOLON : TokenType()
-    object SLASH : TokenType()
-    object STAR : TokenType()
+    object COMMA : TokenType(",")
+    object DOT : TokenType(".")
+    object MINUS : TokenType("-")
+    object PLUS : TokenType("+")
+    object SEMICOLON : TokenType(";")
+    object SLASH : TokenType("/")
+    object STAR : TokenType("*")
 
     // One or two character tokens.
-    object BANG : TokenType()
-    object BANG_EQUAL : TokenType()
-    object EQUAL : TokenType()
-    object EQUAL_EQUAL : TokenType()
-    object GREATER : TokenType()
-    object GREATER_EQUAL : TokenType()
-    object LESS : TokenType()
-    object LESS_EQUAL : TokenType()
+    object BANG : TokenType("!")
+    object BANG_EQUAL : TokenType("!=")
+    object EQUAL : TokenType("=")
+    object EQUAL_EQUAL : TokenType("==")
+    object GREATER : TokenType(">")
+    object GREATER_EQUAL : TokenType(">=")
+    object LESS : TokenType("<")
+    object LESS_EQUAL : TokenType("<=")
 
     // Literals.
-    data class IDENTIFIER(val value: String) : TokenType()
-    data class STRING(val value: String) : TokenType()
-    data class NUMBER(val value: Double) : TokenType()
+    class IDENT(val value: String) : TokenType(value)
+    class STRING(val value: String) : TokenType(value)
+    class NUMBER(val value: Double) : TokenType(value.stringify())
 
     // Keywords.
-    object AND : TokenType()
-    object CLASS : TokenType()
-    object ELSE : TokenType()
-    object FUN : TokenType()
-    object FOR : TokenType()
-    object IF : TokenType()
-    object NIL : TokenType()
-    object OR : TokenType()
-    object PRINT : TokenType()
-    object RETURN : TokenType()
-    object SUPER : TokenType()
-    object THIS : TokenType()
-    object VAR : TokenType()
-    object WHILE : TokenType()
+    object AND : TokenType("and")
+    object CLASS : TokenType("class")
+    object ELSE : TokenType("else")
+    object FUN : TokenType("fun")
+    object FOR : TokenType("for")
+    object IF : TokenType("if")
+    object NIL : TokenType("nil")
+    object OR : TokenType("or")
+    object PRINT : TokenType("print")
+    object RETURN : TokenType("return")
+    object SUPER : TokenType("super")
+    object THIS : TokenType("this")
+    object VAR : TokenType("var")
+    object WHILE : TokenType("while")
 
-    data class BOOL(val value: Boolean) : TokenType()
+    class BOOL(val value: Boolean) : TokenType(value.toString())
 
     // Ignore
-    object COMMENT : TokenType()
-    object WHITESPACE : TokenType()
-    object UNKNOWN : TokenType()
+    object COMMENT : TokenType("")
+    object WHITESPACE : TokenType("")
+    object UNKNOWN : TokenType("")
 
-    object EOF : TokenType()
+    object EOF : TokenType("<EOF>")
+
+    override fun toString() = repr
 
     companion object {
         val keywords = mapOf(
@@ -89,15 +91,6 @@ sealed class TokenType {
         )
     }
 }
-
-fun TokenType.repr() = Companion.keywords[this]
-    ?: Companion.specials[this]
-    ?: when (this) {
-        is IDENTIFIER -> "IDENT `$value`"
-        is STRING -> "STRING \"$value\""
-        is NUMBER -> "NUM `${value.repr()}`"
-        else -> ""
-    }
 
 data class Token(val type: TokenType, val pos: Pos)
 
@@ -136,12 +129,12 @@ class TokenScanner(lines: List<String>) {
                 ';' -> SEMICOLON
                 '*' -> STAR
 
-                '!' -> if (match('=')) BANG_EQUAL else BANG
-                '=' -> if (match('=')) EQUAL_EQUAL else EQUAL
-                '<' -> if (match('=')) LESS_EQUAL else LESS
-                '>' -> if (match('=')) GREATER_EQUAL else GREATER
+                '!' -> if (matchAndConsume('=')) BANG_EQUAL else BANG
+                '=' -> if (matchAndConsume('=')) EQUAL_EQUAL else EQUAL
+                '<' -> if (matchAndConsume('=')) LESS_EQUAL else LESS
+                '>' -> if (matchAndConsume('=')) GREATER_EQUAL else GREATER
 
-                '/' -> if (match('/')) skipComment() else SLASH
+                '/' -> if (matchAndConsume('/')) skipComment() else SLASH
 
                 in digits -> scanNum(curr)
                 in lowercase, in uppercase, '_' -> scanIdent(curr)
@@ -167,7 +160,7 @@ class TokenScanner(lines: List<String>) {
         yield(EOF + Pos(lastPos.line, lastPos.char + 1))
     }
 
-    private fun match(c: Char): Boolean =
+    private fun matchAndConsume(c: Char): Boolean =
         if (chars.hasNext() && chars.peek()?.char == c) {
             chars.next()
             true
@@ -222,7 +215,7 @@ class TokenScanner(lines: List<String>) {
             }
         }
 
-        return keywords[ident] ?: IDENTIFIER(ident)
+        return keywords[ident] ?: IDENT(ident)
     }
 
     private fun scanStr(): TokenType {

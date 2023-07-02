@@ -14,4 +14,4 @@ class TypeError(msg: String) : Exception(msg)
 class InterpreterError(msg: String) : Exception(msg)
 
 // should not be thrown anywhere
-object AbruptEndError : Exception("End without ${TokenType.EOF.repr()}")
+object AbruptEndError : Exception("End without ${TokenType.EOF}")

@@ -4,9 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0b74b290-a100-4ac5-b7dd-fee98f41bd7f" name="Changes" comment="Added logical operators, and or">
+    <list default="true" id="0b74b290-a100-4ac5-b7dd-fee98f41bd7f" name="Changes" comment="Added loops">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Error.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Error.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Expr.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Expr.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Extensions.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Extensions.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/kotlin/Interpreter.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Interpreter.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Lexer.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/kotlin/Main.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Main.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/kotlin/Parser.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Parser.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/kotlin/Stmt.kt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/kotlin/Stmt.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/test/resources/expr.lox" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/resources/expr.lox" afterDir="false" />
@@ -156,7 +161,14 @@
       <option name="project" value="LOCAL" />
       <updated>1686892016481</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Added loops">
+      <created>1686894104103</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1686894104103</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -164,7 +176,15 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="COLUMN_ID_WIDTH">
+                <map>
+                  <entry key="Table.Default.Author.ColumnIdWidth" value="77" />
+                  <entry key="Table.Default.Date.ColumnIdWidth" value="65" />
+                  <entry key="Table.Space.CommitStatus.ColumnIdWidth" value="46" />
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -178,7 +198,8 @@
     <MESSAGE value="Added lexical blocks" />
     <MESSAGE value="Added if-else control flow" />
     <MESSAGE value="Added logical operators, and or" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added logical operators, and or" />
+    <MESSAGE value="Added loops" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added loops" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

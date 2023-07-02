@@ -67,12 +67,19 @@ import Stmt.*
 import TokenType.*
 
 class Interpreter {
-    private var env = Environment()
+    private var env = globals
 
-    fun interpret(stmt: Stmt) {
+    class ReturnToParentCall(val value: Literal?) : Exception(null, null, false, false)
+
+    fun interpret(stmt: Stmt, localEnv: Environment? = null) {
         when (stmt) {
             is Expression -> stmt.expr.eval()
-            is Print -> stmt.expr.eval().also { println(it.ast()) }
+            is Print -> stmt.expr.eval().also { println("$it") }
+
+            is Return -> {
+                val retEval = stmt.expr?.eval()
+                throw ReturnToParentCall(retEval)
+            }
 
             is Var -> {
                 val initVal = stmt.init.eval()
@@ -83,7 +90,7 @@ class Interpreter {
                 val parent = env
 
                 try {
-                    env = Environment(parent) // create new env
+                    env = localEnv ?: Environment(parent) // use env given or create new env
                     stmt.stmts.forEach { interpret(it) }
                 } finally {
                     env = parent
@@ -100,6 +107,11 @@ class Interpreter {
                     interpret(stmt.body)
                 }
             }
+
+            is Stmt.Function -> {
+                val funcObj = Literal.LoxObj.LoxFunction(stmt)
+                env.define(stmt.name, funcObj)
+            }
         }
     }
 
@@ -108,18 +120,18 @@ class Interpreter {
             val leftVal = left.eval()
             val rightVal = right.eval()
 
-            val errMsg = "Unknown operator `${operator.type.repr()}`"
+            val errMsg = "Unknown operator `${op.type}`"
             Log.apply {
-                start = operator.pos
+                start = op.pos
                 msg = errMsg
             }
 
-            when (operator.type) {
+            when (op.type) {
                 BANG_EQUAL -> Literal.Bool(!isEqual(leftVal, rightVal))
                 EQUAL_EQUAL -> Literal.Bool(isEqual(leftVal, rightVal))
 
                 else -> if (leftVal is Literal.Num && rightVal is Literal.Num) {
-                    when (operator.type) {
+                    when (op.type) {
                         GREATER -> Literal.Bool(leftVal.value > rightVal.value)
                         GREATER_EQUAL -> Literal.Bool(leftVal.value >= rightVal.value)
                         LESS -> Literal.Bool(leftVal.value < rightVal.value)
@@ -136,7 +148,7 @@ class Interpreter {
                         }
                     }
                 } else if (leftVal is Literal.Str && rightVal is Literal.Str) {
-                    when (operator.type) {
+                    when (op.type) {
                         PLUS -> Literal.Str(leftVal.value + rightVal.value)
                         else -> {
                             Log.err {}
@@ -153,19 +165,40 @@ class Interpreter {
         is Logical -> {
             val leftVal = left.eval()
 
-            val ret = when (operator.type) {
+            val ret = when (op.type) {
                 OR -> if (leftVal.isTruthy()) leftVal else null
                 AND -> if (!leftVal.isTruthy()) leftVal else null
                 else -> {
                     Log.err {
-                        start = operator.pos
-                        msg = "Expected Logical operator `${operator.type.repr()}`"
+                        start = op.pos
+                        msg = "Expected Logical operator `${op.type}`"
                     }
-                    throw ParseError("Expected Logical operator `${operator.type.repr()}`")
+                    throw ParseError("Expected Logical operator `${op.type}`")
                 }
             }
 
             ret ?: right.eval()
+        }
+
+        is Call -> {
+            val funcObj = callee.eval() as? Literal.LoxObj.LoxCallable
+
+            if (funcObj == null) {
+                Log.err {
+                    start = paren.pos
+                    msg = "Can only call functions and classes"
+                }
+                throw InterpreterError("Can only call functions and classes")
+            } else if (funcObj.arity() != args.size) {
+                Log.err {
+                    start = paren.pos
+                    msg = "Expected ${funcObj.arity()} arguments, but got ${args.size}"
+                }
+                throw InterpreterError("Expected ${funcObj.arity()} arguments, but got ${args.size}")
+            }
+
+            val argsEval = args.map { it.eval() }
+            funcObj.call(this@Interpreter, argsEval)
         }
 
         is Grouping -> expr.eval()
@@ -173,12 +206,12 @@ class Interpreter {
         is Unary -> {
             val rightVal = right.eval()
 
-            when (operator.type) {
+            when (op.type) {
                 MINUS -> if (rightVal is Literal.Num) {
                     Literal.Num(-rightVal.value)
                 } else {
                     Log.err {
-                        start = operator.pos
+                        start = op.pos
                         msg = "Expected number"
                     }
                     throw TypeError("Expected number")
@@ -195,6 +228,19 @@ class Interpreter {
 
         is Literal -> this
     }
+
+    companion object {
+        val globals = Environment().apply {
+            define(IDENT("clock"), object : Literal.LoxObj.LoxCallable {
+                override fun arity(): Int = 0
+
+                override fun call(context: Interpreter, args: List<Literal>): Literal =
+                    Literal.Num(System.currentTimeMillis().toDouble() / 1000.0)
+
+                override fun toString(): String = "(native-func clock [])"
+            })
+        }
+    }
 }
 
 class Environment(
@@ -202,15 +248,15 @@ class Environment(
     private val map: MutableMap<String, Literal> = mutableMapOf(),
 ) {
     // error logging responsibility on caller code
-    fun get(name: IDENTIFIER): Literal = map[name.value]
+    fun get(name: IDENT): Literal = map[name.value]
         ?: parent?.get(name)
         ?: throw InterpreterError("Undefined variable `${name.value}`")
 
-    fun define(name: IDENTIFIER, value: Literal) {
+    fun define(name: IDENT, value: Literal) {
         map[name.value] = value
     }
 
-    fun assign(name: IDENTIFIER, value: Literal) {
+    fun assign(name: IDENT, value: Literal) {
         if (map.containsKey(name.value)) {
             map[name.value] = value
         } else if (parent != null) {
@@ -223,12 +269,12 @@ class Environment(
 }
 
 fun Literal.isTruthy() = when (this) {
-    is Literal.Nothing -> false
+    is Literal.Nil -> false
     is Literal.Bool -> value
     else -> true
 }
 
 fun isEqual(a: Literal, b: Literal) =
-    if (a is Literal.Nothing && b is Literal.Nothing) true
-    else if (a is Literal.Nothing) false
+    if (a is Literal.Nil && b is Literal.Nil) true
+    else if (a is Literal.Nil) false
     else a == b

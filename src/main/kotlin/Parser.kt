@@ -1,14 +1,17 @@
 /**
  * program    → decl* EOF
- * decl       → varDecl | statement
+ * decl       → funcDecl | varDecl | statement
+ * funcDecl   → "fun" IDENT "(" param? ")" block
+ * param      → IDENT ( "," IDENT )*
  * varDecl    → "var" IDENT ( "=" expression )? ";"
- * statement  → exprStmt | ifStmt | printStmt | forStmt | whileStmt | block
+ * statement  → exprStmt | ifStmt | printStmt | forStmt | whileStmt | block | retStmt
  * exprStmt   → expression ";"
  * ifStmt     → "if" expression "{" statement "}" ( "else" "{" statement "}" )?
  * printStmt  → "print" expression ";"
  * forStmt    → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement
  * whileStmt  → "while" "(" expression ")" statement
  * block      → "(" decl* ")"
+ * retStmt    → "return" expression? ";"
  * expression → assignment
  * assignment → IDENT "=" assignment | logic_or
  * logic_or   → logic_and ( "or" logic_and )*
@@ -17,11 +20,14 @@
  * comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
  * term       → factor ( ( "-" | "+" ) factor )*
  * factor     → unary ( ( "/" | "*" ) unary )*
- * unary      → ( "!" | "-" ) unary | primary
+ * unary      → ( "!" | "-" ) unary | call
+ * call       → primary ( "(" arguments? ")" )*
+ * arguments → expression ( "," expression )*
  * primary    → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENT
  */
 
 import TokenType.*
+
 
 class Parser(private val tokens: PeekableIterator<Token>) {
 
@@ -33,14 +39,21 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     }
 
     private fun declaration(): Stmt? {
-        val beginToken = tokens.peek() ?: throw AbruptEndError
+        val beginToken = tokens.peekSafe()
 
         return try {
-            if (beginToken.type == VAR) {
-                tokens.next()
-                varDecl()
-            } else {
-                statement()
+            when (beginToken.type) {
+                is VAR -> {
+                    tokens.next()
+                    varDecl()
+                }
+
+                is FUN -> {
+                    tokens.next()
+                    funcDecl(FuncType.FUNCTION)
+                }
+
+                else -> statement()
             }
         } catch (_: ParseError) {
             // Log.err(e.message ?: "")
@@ -49,51 +62,95 @@ class Parser(private val tokens: PeekableIterator<Token>) {
         }
     }
 
-    private fun varDecl(): Stmt {
-        val (peek, pos) = tokens.peek() ?: throw AbruptEndError
+    enum class FuncType {
+        FUNCTION, METHOD
+    }
 
-        val name = if (peek is IDENTIFIER) {
+    private fun consumeIdent(message: String): IDENT {
+        val (peek, pos) = tokens.peekSafe()
+
+        return if (peek is IDENT) {
             tokens.next()
             peek
         } else {
-            Log.err {
+            Log.errAndThrow {
                 start = pos
-                end = pos + Pos(0, peek.repr().length)
-                msg = "Expected a variable"
+                end = pos + Pos(0, peek.toString().length)
+                msg = message
             }
-            throw ParseError("Expected a variable")
+        }
+    }
+
+    private fun funcDecl(kind: FuncType): Stmt {
+        val name = consumeIdent("Expected $kind name")
+
+        consume(LEFT_PAREN, "Expected `${LEFT_PAREN}` after $kind name")
+
+        val params = mutableListOf<IDENT>()
+        if (!tokens.match(RIGHT_PAREN)) {
+            do {
+                if (params.size >= 255) {
+                    val (peek, pos) = tokens.peekSafe()
+                    Log.errAndThrow {
+                        start = pos
+                        end = pos + Pos(0, peek.toString().length)
+                        msg = "Can't have more than 255 parameters"
+                    }
+                }
+
+                val param = consumeIdent("Expected parameter name")
+                params.add(param)
+
+            } while (tokens.matchAndConsume(COMMA))
         }
 
-        val init = if (tokens.peek()?.type == EQUAL) {
-            tokens.next()
+        consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN}` after parameters")
+
+        consume(LEFT_BRACE, "Expected `${LEFT_BRACE}` before $kind body")
+        val body = block()
+
+        return Stmt.Function(name, params, Stmt.Block(body))
+    }
+
+    private fun varDecl(): Stmt {
+        val name = consumeIdent("Expected a variable")
+
+        val init = if (tokens.matchAndConsume(EQUAL)) {
             expression()
         } else {
-            Expr.Literal.Nothing
+            Expr.Literal.Nil
         }
 
         // TODO Bug - When semicolon is missing at end, the next line is logged
-        consume(SEMICOLON, "Expected `${SEMICOLON.repr()}` after variable `${name.value}` declaration")
+        consume(SEMICOLON, "Expected `${SEMICOLON}` after variable `${name}` declaration")
 
         return Stmt.Var(name, init)
     }
 
     private fun statement(): Stmt {
-        val beginToken = tokens.peek() ?: throw AbruptEndError
+        val beginToken = tokens.peekSafe()
 
         return when (beginToken.type) {
             PRINT -> {
                 tokens.next()
                 val expr = expression()
-                consume(SEMICOLON, "Expected `;` after statement")
+                consume(SEMICOLON, "Expected `${SEMICOLON}` after statement")
                 Stmt.Print(expr)
+            }
+
+            RETURN -> {
+                val keyword = tokens.next()
+                val expr = if (!tokens.match(SEMICOLON)) expression() else null
+                consume(SEMICOLON, "Expected $SEMICOLON after return")
+                Stmt.Return(keyword, expr)
             }
 
             WHILE -> {
                 tokens.next()
 
-                consume(LEFT_PAREN, "Expected `${LEFT_PAREN.repr()}` after while")
+                consume(LEFT_PAREN, "Expected `${LEFT_PAREN}` after while")
                 val cond = expression()
-                consume(RIGHT_PAREN, "Expected ${RIGHT_PAREN.repr()} after consition")
+                consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN}` after condition")
 
                 val body = statement()
 
@@ -122,28 +179,26 @@ class Parser(private val tokens: PeekableIterator<Token>) {
 
     private fun exprStatement(): Stmt {
         val expr = expression()
-        consume(SEMICOLON, "Expected `;` after statement")
+        consume(SEMICOLON, "Expected `${SEMICOLON}` after statement")
         return Stmt.Expression(expr)
     }
 
     private fun forStatement(): Stmt {
-        consume(LEFT_PAREN, "Expected `${LEFT_PAREN.repr()}` after `for`")
+        consume(LEFT_PAREN, "Expected `${LEFT_PAREN}` after `for`")
 
-        val init = if (tokens.match(SEMICOLON)) {
-            tokens.next()
+        val init = if (tokens.matchAndConsume(SEMICOLON)) {
             null
-        } else if (tokens.match(VAR)) {
-            tokens.next()
+        } else if (tokens.matchAndConsume(VAR)) {
             varDecl()
         } else {
             exprStatement()
         }
 
         val cond = if (!tokens.match(SEMICOLON)) expression() else Expr.Literal.Bool(true)
-        consume(SEMICOLON, "Expected `${SEMICOLON.repr()}` after loop condition")
+        consume(SEMICOLON, "Expected `${SEMICOLON}` after loop condition")
 
         val postBody = if (!tokens.match(RIGHT_PAREN)) expression() else null
-        consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN.repr()}` after the clauses")
+        consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN}` after the clauses")
 
         var body = statement()
 
@@ -161,29 +216,25 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     }
 
     private fun ifStatement(): Stmt {
-        consume(LEFT_PAREN, "Expected `${LEFT_PAREN.repr()}` after condition")
+        consume(LEFT_PAREN, "Expected `${LEFT_PAREN}` after condition")
         val cond = expression()
-        consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN.repr()}` after block")
+        consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN}` after block")
 
         val thenBranch = statement()
-        val elseBranch =
-            if (!tokens.end() && tokens.peek()?.type == ELSE) {
-                tokens.next()
-                statement()
-            } else null
+        val elseBranch = if (tokens.matchAndConsume(ELSE)) statement() else null
 
         return Stmt.If(cond, thenBranch, elseBranch)
     }
 
     private fun block(): List<Stmt> {
         val statements = buildList {
-            while (!tokens.end() && tokens.peek()?.type != RIGHT_BRACE) {
+            while (tokens.peekSafe().type != RIGHT_BRACE) {
                 val decl = declaration() ?: continue
                 add(decl)
             }
         }
 
-        consume(RIGHT_BRACE, "Expected ${RIGHT_BRACE.repr()} after block")
+        consume(RIGHT_BRACE, "Expected `${RIGHT_BRACE}` after block")
         return statements
     }
 
@@ -192,7 +243,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     private fun assignment(): Expr {
         val expr = logicalOr()
 
-        if (!tokens.end() && tokens.peek()?.type == EQUAL) {
+        if (tokens.match(EQUAL)) {
             val equals = tokens.next()
             val value = assignment()
 
@@ -213,7 +264,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     private fun logicalOr(): Expr {
         var expr = logicalAnd()
 
-        while (!tokens.end() && tokens.peek()?.type == OR) {
+        while (tokens.match(OR)) {
             val operator = tokens.next()
             val right = logicalAnd()
             expr = Expr.Logical(expr, operator, right)
@@ -225,7 +276,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     private fun logicalAnd(): Expr {
         var expr = equality()
 
-        while (!tokens.end() && tokens.peek()?.type == AND) {
+        while (tokens.match(AND)) {
             val operator = tokens.next()
             val right = equality()
             expr = Expr.Logical(expr, operator, right)
@@ -237,7 +288,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     private fun equality(): Expr {
         var expr = comparison()
 
-        while (!tokens.end() && tokens.match(BANG_EQUAL, EQUAL_EQUAL)) {
+        while (tokens.match(BANG_EQUAL, EQUAL_EQUAL)) {
             val operator = tokens.next()
             val right = comparison()
             expr = Expr.Binary(expr, operator, right)
@@ -249,7 +300,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     private fun comparison(): Expr {
         var expr = term()
 
-        while (!tokens.end() && tokens.match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
+        while (tokens.match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
             val operator = tokens.next()
             val right = term()
             expr = Expr.Binary(expr, operator, right)
@@ -261,7 +312,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     private fun term(): Expr {
         var expr = factor()
 
-        while (!tokens.end() && tokens.match(MINUS, PLUS)) {
+        while (tokens.match(MINUS, PLUS)) {
             val operator = tokens.next()
             val right = factor()
             expr = Expr.Binary(expr, operator, right)
@@ -273,7 +324,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     private fun factor(): Expr {
         var expr = unary()
 
-        while (!tokens.end() && tokens.match(SLASH, STAR)) {
+        while (tokens.match(SLASH, STAR)) {
             val operator = tokens.next()
             val right = unary()
             expr = Expr.Binary(expr, operator, right)
@@ -283,17 +334,53 @@ class Parser(private val tokens: PeekableIterator<Token>) {
     }
 
     private fun unary(): Expr {
-        if (!tokens.end() && tokens.match(BANG, MINUS)) {
+        if (tokens.match(BANG, MINUS)) {
             val operator = tokens.next()
             val right = unary()
             return Expr.Unary(operator, right)
         }
 
-        return primary()
+        return call()
+    }
+
+    private fun call(): Expr {
+        var expr = primary()
+
+        while (true) {
+            if (tokens.matchAndConsume(LEFT_PAREN)) {
+                expr = finishCall(expr)
+            } else {
+                break
+            }
+        }
+
+        return expr
+    }
+
+    private fun finishCall(callee: Expr): Expr {
+        val args =
+            if (tokens.match(RIGHT_PAREN)) {
+                listOf()
+            } else {
+                buildList {
+                    var i = 0
+                    do {
+                        if (++i >= 255) {
+                            Log.err { msg = "Cannot have more than 255 arguments" }
+                            throw ParseError("Cannot have more than 255 arguments")
+                        }
+                        add(expression())
+
+                    } while (tokens.matchAndConsume(COMMA))
+                }
+            }
+
+        val paren = consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN}` after arguments")
+        return Expr.Call(callee, paren, args)
     }
 
     private fun primary(): Expr {
-        val (token, pos) = tokens.peek() ?: throw AbruptEndError
+        val (token, pos) = tokens.peekSafe()
 
         return when (token) {
             is BOOL -> {
@@ -303,7 +390,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
 
             NIL -> {
                 tokens.next()
-                Expr.Literal.Nothing
+                Expr.Literal.Nil
             }
 
             is NUMBER -> {
@@ -316,7 +403,7 @@ class Parser(private val tokens: PeekableIterator<Token>) {
                 Expr.Literal.Str(token.value)
             }
 
-            is IDENTIFIER -> {
+            is IDENT -> {
                 tokens.next()
                 Expr.Variable(token)
             }
@@ -324,32 +411,30 @@ class Parser(private val tokens: PeekableIterator<Token>) {
             LEFT_PAREN -> {
                 tokens.next()
                 val expr = expression()
-                consume(RIGHT_PAREN, "Expected `)` after expression")
+                consume(RIGHT_PAREN, "Expected `${RIGHT_PAREN}` after expression")
                 Expr.Grouping(expr)
             }
 
             else -> {
-                Log.err {
+                Log.errAndThrow {
                     start = pos
-                    msg = "Expected expression. Found `${token.repr()}`"
+                    msg = "Expected expression. Found `${token}`"
                 }
-                throw ParseError("not primary token")
             }
         }
     }
 
     // only use for TokenType that are objects
     private fun consume(type: TokenType, message: String): Token {
-        val (peek, pos) = tokens.peek() ?: throw AbruptEndError
+        val (peek, pos) = tokens.peekSafe()
 
         return if (peek == type) {
             tokens.next()
         } else {
-            Log.err {
+            Log.errAndThrow {
                 start = pos
                 msg = message
             }
-            throw ParseError(message)
         }
     }
 

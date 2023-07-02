@@ -5,7 +5,11 @@ import kotlin.math.abs
 // fun Boolean.orNull(): Boolean? = if (this) true else null
 
 /** Print double without fractional part */
-fun Double.repr() = if (this == toInt().toDouble()) toInt().toString() else toString()
+fun Double.stringify(): String {
+    val num = this.toInt()
+    return if (this == num.toDouble()) num.toString()
+    else this.toString()
+}
 
 /** Count digits of an Int */
 fun Int.digits(): Int {
@@ -83,8 +87,13 @@ class PeekableIterator<T : Any>(private var iter: Iterator<T>) : Iterator<T> {
 fun <T : Any> Iterator<T>.peekable() = PeekableIterator(this)
 fun <T : Any> Sequence<T>.peekable() = iterator().peekable()
 
-fun PeekableIterator<Token>.match(vararg tokens: TokenType) = tokens.any { it == peek()?.type }
+fun PeekableIterator<Token>.match(vararg tokens: TokenType) = tokens.any { it == peekSafe().type }
+
+fun PeekableIterator<Token>.matchAndConsume(vararg tokens: TokenType) =
+    tokens.any { it == peek()?.type }.also { if (it) next() }
+
 fun PeekableIterator<Token>.end() = (peek()?.type ?: throw AbruptEndError) == TokenType.EOF
+fun PeekableIterator<Token>.peekSafe() = peek() ?: throw AbruptEndError
 
 /** Invert a map */
 fun <K, V> Map<K, V>.invert() =

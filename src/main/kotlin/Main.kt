@@ -24,9 +24,9 @@ fun main() {
     for (s in stmts) {
         try {
             interpreter.interpret(s)
-            // println("> ${s.ast()}")
+            // println("> $s")
         } catch (e: Exception) {
-            eprintln(e.message ?: "Something went wrong")
+            // eprintln(e.message ?: "Something went wrong")
             continue
         }
     }
@@ -85,5 +85,10 @@ object Log : ErrorLogger {
 
         eprintln("${end.line fmt width} | ${lines.getOrNull(end.line - 1) ?: ""}")
         eprintln(linePad + "^".repeat(end.char) + " $msg")
+    }
+
+    fun errAndThrow(block: ErrorLogger.() -> Unit): Nothing {
+        err(block)
+        throw ParseError(msg)
     }
 }
