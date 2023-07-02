@@ -67,7 +67,7 @@ import Stmt.*
 import TokenType.*
 
 class Interpreter {
-    private var env = globals
+    var env = globals
 
     class ReturnToParentCall(val value: Literal?) : Exception(null, null, false, false)
 
@@ -109,7 +109,7 @@ class Interpreter {
             }
 
             is Stmt.Function -> {
-                val funcObj = Literal.LoxObj.LoxFunction(stmt)
+                val funcObj = Literal.LoxObj.LoxFunction(stmt, env)
                 env.define(stmt.name, funcObj)
             }
         }
@@ -223,6 +223,7 @@ class Interpreter {
         }
 
         is Variable -> env.get(name)
+            ?: throw InterpreterError("Undefined variable `${name.value}`")
 
         is Assign -> expr.eval().also { env.assign(name, it) }
 
@@ -248,9 +249,7 @@ class Environment(
     private val map: MutableMap<String, Literal> = mutableMapOf(),
 ) {
     // error logging responsibility on caller code
-    fun get(name: IDENT): Literal = map[name.value]
-        ?: parent?.get(name)
-        ?: throw InterpreterError("Undefined variable `${name.value}`")
+    fun get(name: IDENT): Literal? = map[name.value] ?: parent?.get(name)
 
     fun define(name: IDENT, value: Literal) {
         map[name.value] = value
@@ -269,7 +268,7 @@ class Environment(
 }
 
 fun Literal.isTruthy() = when (this) {
-    is Literal.Nil -> false
+    is Literal.Nil, is Literal.Nothing -> false
     is Literal.Bool -> value
     else -> true
 }

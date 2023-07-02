@@ -26,7 +26,7 @@ sealed class Stmt {
     }
 
     class If(val cond: Expr, val thenBranch: Stmt, val elseBranch: Stmt?) : Stmt() {
-        override fun toString(): String = "(if $thenBranch" + if (elseBranch != null) " $elseBranch)" else ")"
+        override fun toString(): String = "(if $thenBranch" + (if (elseBranch != null) " $elseBranch)" else ")")
     }
 
     class While(val cond: Expr, val body: Stmt) : Stmt() {

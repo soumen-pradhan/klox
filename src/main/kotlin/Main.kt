@@ -26,7 +26,7 @@ fun main() {
             interpreter.interpret(s)
             // println("> $s")
         } catch (e: Exception) {
-            // eprintln(e.message ?: "Something went wrong")
+            eprintln(e.message ?: "Something went wrong")
             continue
         }
     }

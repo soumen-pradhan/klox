@@ -44,15 +44,15 @@ sealed interface Expr {
 
     sealed interface Literal : Expr {
 
-        class Str(val value: String) : Literal {
+        data class Str(val value: String) : Literal {
             override fun toString() = value
         }
 
-        class Num(val value: Double) : Literal {
+        data class Num(val value: Double) : Literal {
             override fun toString() = value.stringify()
         }
 
-        class Bool(val value: Boolean) : Literal {
+        data class Bool(val value: Boolean) : Literal {
             override fun toString() = value.toString()
         }
 
@@ -71,13 +71,13 @@ sealed interface Expr {
                 fun call(context: Interpreter, args: List<Literal>): Literal
             }
 
-            class LoxFunction(val decl: Stmt.Function) : LoxCallable {
+            class LoxFunction(val decl: Stmt.Function, val closure: Environment) : LoxCallable {
                 override fun toString() = "(fun ${decl.name} [${decl.params.joinToString(", ") { "$it" }}])"
 
                 override fun arity() = decl.params.size
 
                 override fun call(context: Interpreter, args: List<Literal>): Literal {
-                    val localEnv = Environment(Interpreter.globals)
+                    val localEnv = Environment(closure)
 
                     // bind parameter names to values
                     for ((name, expr) in decl.params.zip(args)) {
